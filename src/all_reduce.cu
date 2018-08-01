@@ -22,6 +22,16 @@
 #define ALIGN_SIZE(size, align) \
   size = ((size + (align) - 1) / (align)) * (align);
 
+#define DELAY_CYCLES 10000
+
+__device__ inline void delay() {
+  clock_t start = clock();
+  clock_t now = clock();
+  while(now - start < DELAY_CYCLES) {
+    now = clock();
+  }
+}
+
 template<int THREADS, int UNROLL, class FUNC, typename T>
 __launch_bounds__(THREADS+WARP_SIZE, 1)
 __global__ void AllReduceKernel(const KernelArgs<T> args) {
@@ -83,6 +93,7 @@ __global__ void AllReduceKernel(const KernelArgs<T> args) {
     offset = chunkOffset + slice * chunkSize;
     maxOffset = min(chunkSize, size-offset);
 
+    delay();
     Prims::Copy(
         thisInput  + offset,
         nextOutput + noffset,
@@ -99,6 +110,7 @@ __global__ void AllReduceKernel(const KernelArgs<T> args) {
       offset = chunkOffset + slice * chunkSize;
       maxOffset = min(chunkSize, size-offset);
 
+      delay();
       Prims::Reduce(
           prevInput  + poffset,
           thisInput  + offset,
@@ -117,6 +129,7 @@ __global__ void AllReduceKernel(const KernelArgs<T> args) {
     offset = chunkOffset + slice * chunkSize;
     maxOffset = min(chunkSize, size-offset);
 
+    delay();
     Prims::ReduceCopy(
         prevInput  + poffset,
         thisInput  + offset,
@@ -136,6 +149,7 @@ __global__ void AllReduceKernel(const KernelArgs<T> args) {
         offset = chunkOffset + slice * chunkSize;
         maxOffset = min(chunkSize, size-offset);
 
+	delay();
         Prims::Copy(
             thisOutput + offset,
             sharedNextOutput + offset,
@@ -153,6 +167,7 @@ __global__ void AllReduceKernel(const KernelArgs<T> args) {
         offset = chunkOffset + slice * chunkSize;
         maxOffset = min(chunkSize, size-offset);
 
+	delay();
         Prims::DoubleCopy(
             prevInput + poffset,
             thisOutput + offset,
@@ -171,6 +186,7 @@ __global__ void AllReduceKernel(const KernelArgs<T> args) {
       maxOffset = min(chunkSize, size-offset);
 
       // Here we need to copy from buffer to this output.
+      delay();
       Prims::Copy(
           prevInput + poffset,
           thisOutput + offset,
